@@ -24,6 +24,19 @@ func InitializeLog(opts ...Option) {
 	slog.SetDefault(logger)
 }
 
+type HandlerWrapper struct {
+	Level *slog.Level
+	slog.Handler
+}
+
+func (h *HandlerWrapper) SetLogLevel(levelStr string) error {
+	return h.Level.UnmarshalText([]byte(levelStr))
+}
+
+type SetLeveler interface {
+	SetLogLevel(levelStr string) error
+}
+
 func Logger(opts ...Option) *slog.Logger {
 	opt := &option{
 		Level:  slog.LevelInfo.String(),
@@ -39,7 +52,7 @@ func Logger(opts ...Option) *slog.Logger {
 	// ///////////////////////////////////
 	levelStr := checkLevel(opt.Level)
 
-	var sloglevel slog.Level
+	sloglevel := new(slog.Level)
 	_ = sloglevel.UnmarshalText([]byte(levelStr))
 
 	// ///////////////////////////////////
@@ -47,26 +60,44 @@ func Logger(opts ...Option) *slog.Logger {
 
 	if pretty {
 		logger = slog.New(
-			tint.NewHandler(
-				opt.Writer,
-				&tint.Options{
-					AddSource:  opt.Caller,
-					Level:      sloglevel,
-					TimeFormat: timeFormat(opt.TimeFormat, pretty),
-				},
-			),
+			&HandlerWrapper{
+				Level: sloglevel,
+				Handler: tint.NewHandler(
+					opt.Writer,
+					&tint.Options{
+						AddSource:  opt.Caller,
+						Level:      sloglevel,
+						TimeFormat: timeFormat(opt.TimeFormat, pretty),
+					},
+				),
+			},
 		)
 	} else {
 		logger = slog.New(
-			slog.NewJSONHandler(
-				opt.Writer,
-				&slog.HandlerOptions{
-					AddSource: opt.Caller,
-					Level:     sloglevel,
-				},
-			),
+			&HandlerWrapper{
+				Level: sloglevel,
+				Handler: slog.NewJSONHandler(
+					opt.Writer,
+					&slog.HandlerOptions{
+						AddSource: opt.Caller,
+						Level:     sloglevel,
+					},
+				),
+			},
 		)
 	}
 
 	return logger
+}
+
+// SetLogLevel set the log level of the default logger.
+//   - Just work if the handler implements SetLeveler interface.
+func SetLogLevel(levelStr string) error {
+	if wrapper, ok := slog.Default().Handler().(SetLeveler); ok {
+		if err := wrapper.SetLogLevel(levelStr); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
