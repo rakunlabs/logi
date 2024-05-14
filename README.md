@@ -15,3 +15,9 @@ logi.InitializeLog()
 slog.Error("This is an error message")
 slog.Info("Yet another log message")
 ```
+
+For setting global log level, uses level parse from slog package.
+
+```go
+logi.SetLogLevel("ERROR")
+```

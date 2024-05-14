@@ -1,8 +1,10 @@
 package logi
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/lmittmann/tint"
@@ -13,6 +15,7 @@ var (
 	EnvLevel         = "LOG_LEVEL"
 	TimeFormat       = time.RFC3339Nano
 	TimePrettyFormat = "2006-01-02 15:04:05 MST"
+	ErrorKey         = "error"
 )
 
 // InitializeLog choice between json format or common format.
@@ -100,4 +103,20 @@ func SetLogLevel(levelStr string) error {
 	}
 
 	return nil
+}
+
+// Log for without level check.
+func Log(msg string, args ...any) {
+	var pc uintptr
+	if true {
+		var pcs [1]uintptr
+		// skip [runtime.Callers, this function, this function's caller]
+		runtime.Callers(2, pcs[:])
+		pc = pcs[0]
+	}
+
+	r := slog.NewRecord(time.Now(), slog.LevelInfo, msg, pc)
+	r.Add(args...)
+
+	_ = slog.Default().Handler().Handle(context.Background(), r)
 }
