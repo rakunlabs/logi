@@ -1,4 +1,4 @@
-package logi
+package logadapter
 
 type Adapter interface {
 	Error(msg string, keysAndValues ...interface{})
