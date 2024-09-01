@@ -2,16 +2,19 @@ package logi_test
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/rakunlabs/logi"
 )
 
 func ExampleInitializeLog() {
-	logi.InitializeLog()
+	logi.InitializeLog(logi.WithTimeStamp("-"), logi.WithCaller(false), logi.WithWriter(os.Stdout))
 
 	_ = logi.SetLogLevel("ERROR")
 
 	slog.Error("This is an error message")
 	slog.Info("Yet another log message")
-	// {"time":"2024-05-08T23:57:36.393939445+02:00","level":"INFO","source":{"function":"github.com/rakunlabs/logi_test.ExampleLogi","file":"/logi/example_test.go","line":13},"msg":"Yet another log message"}
+
+	// Output:
+	// {"time":"-","level":"ERROR","msg":"This is an error message"}
 }

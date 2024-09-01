@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/lmittmann/tint"
@@ -19,24 +20,27 @@ var (
 )
 
 // InitializeLog choice between json format or common format.
-// LOG_PRETTY boolean environment value always override the decision.
-// Override with some option argument.
-func InitializeLog(opts ...Option) {
+// Set the default logger and return it.
+//   - If the LOG_PRETTY environment variable is set to true, the pretty format will be used.
+//   - If the LOG_LEVEL environment variable is set, the log level will be set.
+func InitializeLog(opts ...Option) *slog.Logger {
 	logger := Logger(opts...)
 
 	slog.SetDefault(logger)
+
+	return logger
 }
 
-type HandlerWrapper struct {
+type handlerWrapper struct {
 	Level *slog.Level
 	slog.Handler
 }
 
-func (h *HandlerWrapper) SetLogLevel(levelStr string) error {
+func (h *handlerWrapper) SetLogLevel(levelStr string) error {
 	return h.Level.UnmarshalText([]byte(levelStr))
 }
 
-type SetLeveler interface {
+type setLeveler interface {
 	SetLogLevel(levelStr string) error
 }
 
@@ -53,7 +57,7 @@ func Logger(opts ...Option) *slog.Logger {
 	pretty := isPretty(opt.Pretty, opt.Writer)
 
 	// ///////////////////////////////////
-	levelStr := checkLevel(opt.Level)
+	levelStr := strings.ToUpper(checkLevel(opt.Level))
 
 	sloglevel := new(slog.Level)
 	_ = sloglevel.UnmarshalText([]byte(levelStr))
@@ -61,29 +65,38 @@ func Logger(opts ...Option) *slog.Logger {
 	// ///////////////////////////////////
 	var logger *slog.Logger
 
+	tFormat := timeFormat(opt.TimeFormat, pretty)
+
 	if pretty {
 		logger = slog.New(
-			&HandlerWrapper{
+			&handlerWrapper{
 				Level: sloglevel,
 				Handler: tint.NewHandler(
 					opt.Writer,
 					&tint.Options{
 						AddSource:  opt.Caller,
 						Level:      sloglevel,
-						TimeFormat: timeFormat(opt.TimeFormat, pretty),
+						TimeFormat: tFormat,
 					},
 				),
 			},
 		)
 	} else {
 		logger = slog.New(
-			&HandlerWrapper{
+			&handlerWrapper{
 				Level: sloglevel,
 				Handler: slog.NewJSONHandler(
 					opt.Writer,
 					&slog.HandlerOptions{
 						AddSource: opt.Caller,
 						Level:     sloglevel,
+						ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+							if a.Key == slog.TimeKey {
+								a.Value = slog.StringValue(a.Value.Time().Format(tFormat))
+							}
+
+							return a
+						},
 					},
 				),
 			},
@@ -94,9 +107,9 @@ func Logger(opts ...Option) *slog.Logger {
 }
 
 // SetLogLevel set the log level of the default logger.
-//   - Just work if the handler implements SetLeveler interface.
+//   - Just work if the handler implements `SetLogLevel(levelStr string) error` function.
 func SetLogLevel(levelStr string) error {
-	if wrapper, ok := slog.Default().Handler().(SetLeveler); ok {
+	if wrapper, ok := slog.Default().Handler().(setLeveler); ok {
 		if err := wrapper.SetLogLevel(levelStr); err != nil {
 			return err
 		}

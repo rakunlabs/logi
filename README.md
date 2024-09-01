@@ -1,6 +1,8 @@
 # logi
 
-Log initializer for golang's slog.  
+[![Go PKG](https://raw.githubusercontent.com/rakunlabs/.github/main/assets/badges/gopkg.svg)](https://pkg.go.dev/github.com/rakunlabs/logi)
+
+Log initializer for golang's slog.
 If terminal is detected, it will use colorized output else it will use JSON output.
 
 ```sh
