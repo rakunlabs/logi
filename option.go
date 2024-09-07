@@ -38,6 +38,12 @@ func WithPretty(pretty selection) Option {
 	}
 }
 
+func WithPrettyStr(pretty string) Option {
+	return func(opt *option) {
+		opt.Pretty = prettySelection(pretty)
+	}
+}
+
 // WithLevel sets the log level.
 //
 // The level must be one of the following:

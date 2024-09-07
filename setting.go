@@ -20,6 +20,19 @@ type fd interface {
 	Fd() uintptr
 }
 
+func prettySelection(v string) selection {
+	if v == "" {
+		return SelectAuto
+	}
+
+	vBool, _ := strconv.ParseBool(v)
+	if vBool {
+		return SelectTrue
+	}
+
+	return SelectFalse
+}
+
 func isPretty(v selection, w io.Writer) bool {
 	switch v {
 	case SelectAuto:
