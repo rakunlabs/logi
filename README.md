@@ -23,3 +23,11 @@ For setting global log level, uses level parse from slog package.
 ```go
 logi.SetLogLevel("ERROR")
 ```
+
+Context logging
+
+```go
+ctx := logi.WithContext(context.Background(), slog.With(slog.String("component", "example")))
+
+logi.Ctx(ctx).Info("This is a log message")
+```
