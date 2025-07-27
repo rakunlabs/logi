@@ -3,7 +3,7 @@ module github.com/rakunlabs/logi
 go 1.22
 
 require (
-	github.com/lmittmann/tint v1.0.5
+	github.com/lmittmann/tint v1.1.2
 	github.com/mattn/go-isatty v0.0.20
 )
 

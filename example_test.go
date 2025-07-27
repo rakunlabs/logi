@@ -21,7 +21,7 @@ func ExampleInitializeLog() {
 	// {"time":"-","level":"ERROR","msg":"This is an error message"}
 }
 
-func ExampleContextLog() {
+func ExampleWithContext() {
 	// stdout writer for output test
 	logi.InitializeLog(logi.WithTimeStamp("-"), logi.WithCaller(false), logi.WithWriter(os.Stdout))
 
@@ -33,5 +33,5 @@ func ExampleContextLog() {
 
 	// Output:
 	// {"time":"-","level":"INFO","msg":"This is a log message","component":"example"}
-	// {"time":"-","level":"INFO","msg":"Empty context"}
+	// {"time":"-","level":"INFO","msg":"sEmpty context"}
 }
