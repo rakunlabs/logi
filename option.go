@@ -5,11 +5,12 @@ import (
 )
 
 type option struct {
-	Pretty     selection
-	TimeFormat *string
-	Caller     bool
-	Level      string
-	Writer     io.Writer
+	Pretty          selection
+	TimeFormat      *string
+	Caller          bool
+	Level           string
+	Writer          io.Writer
+	ParseJSONString bool
 }
 
 func (o *option) apply(opts ...Option) {
@@ -57,5 +58,15 @@ func WithLevel(level string) Option {
 func WithWriter(w io.Writer) Option {
 	return func(options *option) {
 		options.Writer = w
+	}
+}
+
+// WithParseJSONString enables or disables automatic parsing of JSON strings.
+// When enabled, string values that look like JSON (starting with { or [) will be
+// parsed and displayed as raw JSON instead of escaped strings.
+// Default is true.
+func WithParseJSONString(parse bool) Option {
+	return func(options *option) {
+		options.ParseJSONString = parse
 	}
 }

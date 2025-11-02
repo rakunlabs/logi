@@ -2,6 +2,7 @@ package logi
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"runtime"
@@ -44,12 +45,45 @@ type setLeveler interface {
 	SetLogLevel(levelStr string) error
 }
 
+// jsonValue wraps a JSON string for proper display in both JSON and pretty formats
+type jsonValue string
+
+func (j jsonValue) MarshalJSON() ([]byte, error) {
+	return []byte(j), nil
+}
+
+// jsonUnescapingWriter wraps an io.Writer to post-process tint output
+// and unescape JSON strings while preserving ANSI color codes
+type jsonUnescapingWriter struct {
+	writer io.Writer
+}
+
+func newJSONUnescapingWriter(w io.Writer) *jsonUnescapingWriter {
+	return &jsonUnescapingWriter{
+		writer: w,
+	}
+}
+
+func (w *jsonUnescapingWriter) Write(p []byte) (n int, err error) {
+	// Process the line to unescape JSON strings while preserving ANSI codes
+	processed := UnescapeJSONInLine(p)
+
+	written, err := w.writer.Write(processed)
+	if err != nil {
+		return written, err
+	}
+
+	// Return the original length so caller thinks all bytes were written
+	return len(p), nil
+}
+
 func Logger(opts ...Option) *slog.Logger {
 	opt := &option{
-		Level:  slog.LevelInfo.String(),
-		Caller: true,
-		Writer: os.Stderr,
-		Pretty: SelectAuto,
+		Level:           slog.LevelInfo.String(),
+		Caller:          true,
+		Writer:          os.Stderr,
+		Pretty:          SelectAuto,
+		ParseJSONString: true,
 	}
 	opt.apply(opts...)
 
@@ -68,15 +102,32 @@ func Logger(opts ...Option) *slog.Logger {
 	tFormat := timeFormat(opt.TimeFormat, pretty)
 
 	if pretty {
+		// Wrap the writer to unescape JSON strings in the output if enabled
+		writer := opt.Writer
+		if opt.ParseJSONString {
+			writer = newJSONUnescapingWriter(opt.Writer)
+		}
+
 		logger = slog.New(
 			&handlerWrapper{
 				Level: sloglevel,
 				Handler: tint.NewHandler(
-					opt.Writer,
+					writer,
 					&tint.Options{
 						AddSource:  opt.Caller,
 						Level:      sloglevel,
 						TimeFormat: tFormat,
+						ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+							// Handle JSON strings if enabled
+							if opt.ParseJSONString && a.Value.Kind() == slog.KindString {
+								str := a.Value.String()
+								// Check if the string looks like JSON (starts with { or [)
+								if len(str) > 0 && (str[0] == '{' || str[0] == '[') {
+									a.Value = slog.AnyValue(jsonValue(str))
+								}
+							}
+							return a
+						},
 					},
 				),
 			},
@@ -93,6 +144,15 @@ func Logger(opts ...Option) *slog.Logger {
 						ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
 							if a.Key == slog.TimeKey {
 								a.Value = slog.StringValue(a.Value.Time().Format(tFormat))
+							}
+
+							// Handle JSON strings - parse them as raw JSON if enabled
+							if opt.ParseJSONString && a.Value.Kind() == slog.KindString {
+								str := a.Value.String()
+								// Check if the string looks like JSON (starts with { or [)
+								if len(str) > 0 && (str[0] == '{' || str[0] == '[') {
+									a.Value = slog.AnyValue(jsonValue(str))
+								}
 							}
 
 							return a
