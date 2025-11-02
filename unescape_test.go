@@ -103,3 +103,67 @@ func Test_unescapeJSONInLine(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkUnescapeJSONInLine_PlainText(b *testing.B) {
+	line := []byte("This is a plain log line without any JSON or ANSI codes")
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_SmallEscapedJSON(b *testing.B) {
+	line := []byte(`"{\"key\":\"value\"}"`)
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_LargeEscapedJSON(b *testing.B) {
+	line := []byte(`"{\"user\":{\"name\":\"John Doe\",\"email\":\"john@example.com\",\"age\":30,\"address\":{\"street\":\"123 Main St\",\"city\":\"Springfield\",\"zip\":\"12345\"}},\"status\":\"active\",\"metadata\":{\"created\":\"2023-01-01\",\"updated\":\"2023-10-01\"}}"`)
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_WithANSI(b *testing.B) {
+	line := []byte("\x1b[32m\"{\\\"status\\\":\\\"ok\\\"}\"\x1b[0m")
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_ComplexLogLine(b *testing.B) {
+	line := []byte(`2023-10-01 12:34:56 INFO [service-name] \x1b[33mRequest processed\x1b[0m "{\"request\":{\"method\":\"POST\",\"path\":\"/api/users\",\"duration\":\"123ms\"},\"response\":{\"status\":200}}"`)
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_NoEscapedContent(b *testing.B) {
+	line := []byte(`"[1,2,3,4,5]"`)
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_MultipleANSI(b *testing.B) {
+	line := []byte("\x1b[1m\x1b[31mError:\x1b[0m \x1b[33mWarning message\x1b[0m \x1b[32mSuccess\x1b[0m")
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}
+
+func BenchmarkUnescapeJSONInLine_LongPlainText(b *testing.B) {
+	line := []byte("This is a very long log line that contains no JSON or ANSI codes but is quite lengthy to test the performance with larger input sizes that might be more realistic in production environments where log lines can be quite verbose and contain a lot of information")
+
+	for b.Loop() {
+		_ = UnescapeJSONInLine(line)
+	}
+}

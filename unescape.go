@@ -9,7 +9,7 @@ func UnescapeJSONInLine(line []byte) []byte {
 		return line
 	}
 
-	var result []byte
+	result := make([]byte, 0, len(line))
 	i := 0
 
 	for i < len(line) {
