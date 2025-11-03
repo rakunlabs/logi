@@ -2,6 +2,7 @@ package logi
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"os"
@@ -43,13 +44,6 @@ func (h *handlerWrapper) SetLogLevel(levelStr string) error {
 
 type setLeveler interface {
 	SetLogLevel(levelStr string) error
-}
-
-// jsonValue wraps a JSON string for proper display in both JSON and pretty formats
-type jsonValue string
-
-func (j jsonValue) MarshalJSON() ([]byte, error) {
-	return []byte(j), nil
 }
 
 // jsonUnescapingWriter wraps an io.Writer to post-process tint output
@@ -117,17 +111,6 @@ func Logger(opts ...Option) *slog.Logger {
 						AddSource:  opt.Caller,
 						Level:      sloglevel,
 						TimeFormat: tFormat,
-						ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-							// Handle JSON strings if enabled
-							if opt.ParseJSONString && a.Value.Kind() == slog.KindString {
-								str := a.Value.String()
-								// Check if the string looks like JSON (starts with { or [)
-								if len(str) > 0 && (str[0] == '{' || str[0] == '[') {
-									a.Value = slog.AnyValue(jsonValue(str))
-								}
-							}
-							return a
-						},
 					},
 				),
 			},
@@ -150,8 +133,8 @@ func Logger(opts ...Option) *slog.Logger {
 							if opt.ParseJSONString && a.Value.Kind() == slog.KindString {
 								str := a.Value.String()
 								// Check if the string looks like JSON (starts with { or [)
-								if len(str) > 0 && (str[0] == '{' || str[0] == '[') {
-									a.Value = slog.AnyValue(jsonValue(str))
+								if len(str) > 0 && ((str[0] == '{' && str[len(str)-1] == '}') || (str[0] == '{' && str[len(str)-1] == '}')) {
+									a.Value = slog.AnyValue(json.RawMessage(str))
 								}
 							}
 
